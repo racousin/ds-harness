@@ -1,0 +1,4 @@
+# the public tasks come from the challenge page, runs are local
+dev.json
+*.json
+__pycache__/
