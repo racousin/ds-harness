@@ -74,6 +74,17 @@ numpy, pandas, sympy. Models (mounted read-only, nothing else loads): `Qwen/Qwen
 `Qwen/Qwen2.5-1.5B-Instruct`, `Qwen/Qwen2.5-Coder-1.5B-Instruct`,
 `deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B`, `Qwen/Qwen3-1.7B`.
 
+## Uploads
+
+`agent.py` and the modules it imports, up to 10 files, PyTorch runtime. Each upload is scanned
+before it runs:
+
+- **only `agent.py` may define `class Agent`**: in a module you import (e.g. a stage you reuse),
+  give the class another name;
+- **no `exec(...)`** in your files (the scan, bandit, refuses it): run generated code with
+  `dsh.run_python`, which executes it in a subprocess;
+- `from_pretrained` needs a pinned `revision=` (`dsh.load_llm` does it).
+
 ## Local run
 
 `python localtest.py agent.py` runs your file on `dev.json` with the leaderboard's code
