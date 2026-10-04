@@ -75,7 +75,9 @@ If `solve` raises an exception or misses its timeout, the run ends and the platf
 deployment: **no score**, and the deployment still counts in your quota. So a bug that affects
 one task must not escape `solve`. Both agents in the kit catch every failure **per task** and
 answer that task with a well-typed placeholder. Stopping on time is the same rule: check
-`Budget.remaining()` before each expensive step, and pass `max_time` to `chat`.
+`Budget.remaining()` before each expensive step, and pass `max_time` to `chat`. Memory too:
+going over the container's 3 GiB of RAM kills the agent, so plan for it as a failure; a
+`torch.cuda.OutOfMemoryError` is an ordinary exception, catch it per task.
 
 ### Submitting
 
