@@ -73,7 +73,7 @@ class Agent:
   Packages: torch, transformers, accelerate, pandas, numpy, sympy, matplotlib. **No
   scikit-learn, scipy or statsmodels.**
 - **Runtime.** Choose the **PyTorch** runtime: the console's default is not torch.
-- **Quota.** 2 deployments per person per rolling 24 h, counted across every ML-Arena
+- **Quota.** 5 deployments per person per rolling 24 h, counted across every ML-Arena
   challenge, failed ones included. A deployment takes about 7–9 min plus the queue.
 - **Rules.** Work in pairs. Do not log or store task content (prompts, files) from platform
   runs.

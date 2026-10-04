@@ -84,7 +84,7 @@ going over the container's 3 GiB of RAM kills the agent, so plan for it as a fai
 Upload `agent.py` (your agent, or a baseline renamed) and the modules it imports, such as
 `dsh.py`: up to 10 files and 100 MB. They land in one read-only directory on `sys.path`.
 Choose the **PyTorch** runtime: the console's default is not torch, and a wrong pick costs a
-deployment. You have **2 deployments per person per rolling 24 h, counted across every
+deployment. You have **5 deployments per person per rolling 24 h, counted across every
 ML-Arena challenge, failed ones included**. Each one is a short test run on a few dev tasks,
 then the scored run on the private set: about 7–9 min, plus the queue (one GPU, one job at a
 time).
