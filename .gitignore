@@ -2,3 +2,4 @@
 dev.json
 run*.json
 __pycache__/
+.pytest_cache/
