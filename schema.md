@@ -70,7 +70,7 @@ errors per task, keep a margin, and answer a number anyway. There is no other ti
 
 One RTX 4090 for your job, 3 CPUs, 3 GiB of RAM (over it the container is killed), no network,
 a read-only root filesystem with a 128 MB `/tmp`. Packages: torch, transformers, accelerate,
-numpy, pandas, sympy. Models (mounted read-only, nothing else loads): `Qwen/Qwen2.5-0.5B-Instruct`,
+numpy, pandas, scipy, scikit-learn, sympy. Models (mounted read-only, nothing else loads): `Qwen/Qwen2.5-0.5B-Instruct`,
 `Qwen/Qwen2.5-1.5B-Instruct`, `Qwen/Qwen2.5-Coder-1.5B-Instruct`,
 `deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B`, `Qwen/Qwen3-1.7B`.
 
