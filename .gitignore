@@ -1,4 +1,4 @@
-# the public tasks come from the challenge page, runs are local
+# the tasks come from the challenge's dataset; runs are local
 dev.json
-*.json
+run*.json
 __pycache__/

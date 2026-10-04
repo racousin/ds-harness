@@ -1,95 +1,80 @@
-# DS-Harness — task and answer format
+# DS-Harness — formats, score, timing
 
-`dev.json` (178 tasks, downloaded from the challenge page) is a list of tasks with their gold
-answers. The platform sends your agent the same kind of task, without the gold keys, and scores
-the replies with `scoring.py` (shipped here unchanged). `localtest.py` runs your agent on
-`dev.json` with the platform's delivery, timeouts and scoring.
+## What your agent receives
 
-## Agent interface
+`Agent.solve(tasks)` gets a list of 8 tasks. A task is:
 
-```python
-class Agent:
-    def __init__(self): ...                       # load your model here (60 s on the platform)
-    def solve(self, tasks: list[dict]) -> list[dict]:
-        return [{"id": t["id"], "answer": ..., "trace": "optional text"} for t in tasks]
+```json
+{"id": "p_042",
+ "objective": "Fit a logistic regression without regularisation ... What is the predicted probability of default for the loan 8812 of test.csv? Round to 3 decimals.",
+ "files": ["/var/run/agents/data/p_042/train.csv", "/var/run/agents/data/p_042/test.csv",
+           "/var/run/agents/data/p_042/data_dictionary.csv"]}
 ```
 
-Each task you receive:
+- `objective` is the whole statement: what to compute, the rounding, and how to read the
+  files (separator, decimal mark, missing values, units, duplicated rows, columns to leave out).
+- `files` lists absolute paths, and is empty when the task has none. The files of a call exist
+  during that call only. Reading them, and deciding what reaches the model, is your system's job.
+- A task with files always has a `data_dictionary.csv` (`file, column, description, unit`).
+  Headers are short codes that change from task to task; the objective names a column by its
+  **description**.
 
-| key | content |
-|---|---|
-| `id` | string, echo it back |
-| `prompt` | the question, in English prose |
-| `files` | `{file name: CSV text}`; may be empty. Often includes `data_dictionary.csv` (columns `file`, `column`, `description`, `unit`) |
-| `answer_type` | `number`, `category`, `list`, `vector` or `predictions` |
-| `time_budget_s` | this task's share of the call's timeout: stop working on the task by then |
+Nothing else is sent: not the task type, not the expected format. Your system has to recognise
+the kind of task from the objective.
 
-`dev.json` also carries `family`, `level`, `answer`, `scoring` and `heldout_family` so you can
-score yourself; the agent never receives them.
+## What your agent returns
 
-## Answer types
+```json
+[{"id": "p_042", "answer": 0.437}, ...]
+```
 
-| `answer_type` | what to return | example |
+One `{"id", "answer"}` per task. **Every answer is one number**: an `int` or a `float`, or a
+string holding a plain decimal number (`"41.07"`, `"-3"`, `"1e-3"`). `"1,200"`, `"12 kg"`, `None`
+or a list are format errors (the task scores 0). A missing task scores 0.
+
+## Score
+
+- The objective states the rounding: *n decimals* gives a tolerance of `1.5 × 10⁻ⁿ`;
+  *an integer* gives `1e-6`. Inside the tolerance the task scores 1, otherwise 0. An exact
+  unrounded value is always inside the tolerance.
+- **Score = 100 × the mean over all tasks.** No levels, no weights.
+- The leaderboard also shows the mean on tasks without files (*No files*), with tables
+  (*Tables*) and with a regression (*Fits*).
+
+## The tasks
+
+| Family | Types (in `dev.json`) | What |
 |---|---|---|
-| `number` | an int/float (numpy scalars accepted locally), or a string such as `"12.5"`, `"1,200.50"`, `"-3"`, `"5/36"`, `"12.5%"` (read as 12.5) | `41.07` |
-| `category` | a string, compared case-insensitively after stripping spaces | `"CAR"` |
-| `list` | a list of labels, compared position by position (case-insensitive) | `["Lyon", "Nice"]` |
-| `vector` | a list of numbers of the requested length (a forecast) | `[102.4, 98.1, 110.0]` |
-| `predictions` | a list with one element per requested test row: labels or numbers, as the prompt says (probabilities are numbers in [0, 1]) | `["yes", "no", ...]` |
+| no files | `calc.arithmetic`, `calc.stats_inline`, `calc.percent`, `calc.growth`, `calc.functions`, `calc.dates`, `calc.integer`, `calc.word`, `calc.probability` | computation stated in the text |
+| tables | `table.stat`, `table.filter`, `table.group`, `table.join`, `table.derive` | a statistic over one or two messy CSV files |
+| fits | `fit.linear`, `fit.logistic` | fit a regression on `train.csv`, answer about the model or `test.csv` |
 
-Rejected (counted as format errors, score 0): booleans, NaN/inf, `"12,5"` (ambiguous), text
-around a number (`"about 12"`), a list of the wrong length, a probability outside [0, 1].
-In a reply, an id that is not in the batch or an id given twice counts as a format error;
-a duplicated id also scores 0.
+The private set (120 tasks: 45 without files, 50 tables, 25 fits) uses the same generators with
+other draws, and adds a few table types that are not in `dev.json`. A system that only knows the
+dev types loses those tasks. `dev.json` (180 tasks) carries the gold keys (`answer`, `tol`,
+`type`) and the files' text (`files`: name → content), so you can score and analyse yourself.
 
-The prompt fixes the rounding, units, ddof, quartile method, inclusive bounds and how to treat
-missing or messy values. Tolerances are in each task's `scoring`.
+## Timing
 
-## Scoring
+| Step | Limit |
+|---|---|
+| `Agent()` loads the model | 60 s |
+| each `solve()` call (8 tasks, types mixed) | 40 s |
+| the scored run | 15 calls: 120 tasks |
+| the test run before it | 2 calls of `dev.json` tasks |
 
-- Exact tasks: 1 if within tolerance, else 0.
-- Modelling tasks (level 3): `(m - baseline) / (reference - baseline)` clipped to [0, 1], where
-  `m` is sMAPE (forecast lists), absolute percentage error (a forecast total), MAE (regression),
-  macro-F1 (labels) or Brier score (probabilities). The baseline is a trivial rule (seasonal naive,
-  training median, training prior, best of majority/random labels); the reference is a tuned model.
-- Level score = mean score over all tasks of that level (every task of a level weighs the same).
-- **Leaderboard score = 100 × (0.3·L1 + 0.4·L2 + 0.3·L3).**
-- Extra leaderboard columns: `level_1`, `level_2`, `level_3`, `heldout` (mean over the tasks of
-  families absent from the public tasks), `format_errors`, `tasks_answered`.
+**A call that raises or takes longer than 40 s ends the run, and the deployment fails.** Catch
+errors per task, keep a margin, and answer a number anyway. There is no other time rule.
 
-## Delivery and time
+## The machine
 
-- The private run makes 21 `solve` calls: 8 level-1/2 tasks per call, or 2 level-3 tasks.
-- Call timeout = 2.5 × (2 s per level-1/2 task + 8 s per level-3 task): 40 s for a full batch.
-  Each task's `time_budget_s` is its share of that timeout.
-- The job ends 399 s after it starts, model loading included (about 380 s of answering after a
-  ~17 s load). Every call gets its full timeout: when the next batch's full timeout no longer
-  fits before the end, that batch is not sent and its tasks score 0. **Plan for 330 s of
-  answering**, about 2 s per level-1/2 task and 8 s per level-3 task.
-- **A call that raises or misses its timeout ends the run, and the deployment fails: no
-  score.** Catch errors per task, return a placeholder answer instead of raising, and stop at
-  `time_budget_s`.
+One RTX 4090 for your job, 3 CPUs, 3 GiB of RAM (over it the container is killed), no network,
+a read-only root filesystem with a 128 MB `/tmp`. Packages: torch, transformers, accelerate,
+numpy, pandas, sympy. Models (mounted read-only, nothing else loads): `Qwen/Qwen2.5-0.5B-Instruct`,
+`Qwen/Qwen2.5-1.5B-Instruct`, `Qwen/Qwen2.5-Coder-1.5B-Instruct`,
+`deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B`, `Qwen/Qwen3-1.7B`.
 
-## Data notes
+## Local run
 
-- Column headers and data-dictionary descriptions vary from task to task, even for the same
-  kind of table. Read the dictionary (or the column list in the prompt), never a fixed header.
-- In level-3 tasks, feature columns of `train.csv` and `test.csv` may contain missing values
-  (empty cells) without any mention in the prompt. Impute or handle them: an exception in
-  `solve` ends the run with no score. Columns used in a row condition of the prompt have no missing values.
-- In level-1/2 table tasks, when the prompt says how missing values are written, rows missing a
-  column are left out of every computation that uses that column (including the denominator of
-  a percentage).
-
-## Private set
-
-119 tasks (37 at level 1, 67 at level 2, 15 at level 3) with the same format. It uses other
-wordings, other table domains and column names. 24 of its tasks come from families that are
-not in `dev.json`; the `heldout` column is their mean. `dev.json` contains one unseen-style
-family, `sample.cumulative_first` (2 tasks, `heldout_family` true), as a preview; it does not
-appear in the private set. A harness that reads the prompt and the files generalises. A solver
-keyed on dev wordings does not.
-
-`localtest.py --budget-s 330` scales the 330 s to the task file you run (about 575 s for the
-full `dev.json`, which has more level-3 tasks than the private set). Expect dev scores to
-run higher than private ones: you tune on the dev wordings.
+`python localtest.py agent.py` runs your file on `dev.json` with the leaderboard's code
+(`scoring.run_agent`): the same batches, the same file handling, the same 40 s per call.

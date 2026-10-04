@@ -1,0 +1,10 @@
+{
+  "env_allowed_models": [],
+  "agent_allowed_models": [
+    "Qwen/Qwen2.5-0.5B-Instruct",
+    "Qwen/Qwen2.5-1.5B-Instruct",
+    "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+    "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
+    "Qwen/Qwen3-1.7B"
+  ]
+}

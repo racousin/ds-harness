@@ -4,5 +4,4 @@ accelerate
 pandas
 numpy
 sympy
-matplotlib
 pytest
